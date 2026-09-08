@@ -46,15 +46,12 @@ jobs:
         with:
           context: zigbee2mqtt
           platforms: linux/arm/v7
-          build-args: |
-            BUILD_FROM=ghcr.io/home-assistant/armv7-base:3.24
-            BUILD_VERSION=2.14.1-ihost.1
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.IMAGE_NAME }}:2.14.1-ihost.1
+            ${{ env.IMAGE_NAME }}:2.14.1-ihost.2
             ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Inspect published ARMv7 manifest
         if: github.event_name != 'pull_request'
-        run: docker buildx imagetools inspect "${IMAGE_NAME}:2.14.1-ihost.1"
+        run: docker buildx imagetools inspect "${IMAGE_NAME}:2.14.1-ihost.2"

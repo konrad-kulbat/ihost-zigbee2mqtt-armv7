@@ -30,16 +30,18 @@ Sources: [iHost manifest](https://raw.githubusercontent.com/iHost-Open-Source-Pr
 | Image | old iHost GHCR image | official per-arch GHCR image | separate owner GHCR image |
 
 The iHost-specific part is the ARMv7 target and the legacy iHost deployment
-context—not a separate runtime implementation. Therefore copying the current
-official common Dockerfile and entrypoint is the smallest compatible change.
-The official add-on's own images cannot be used directly because its manifest
-and published HA image family omit ARMv7. A dedicated wrapper image is required.
+context—not a separate runtime implementation. The official HA base-image
+project now supports only amd64/arm64, so `ghcr.io/home-assistant/armv7-base:3.24`
+does not exist. This was confirmed by the failed CI run and by Home Assistant's
+current base-image support statement. It makes the previously selected HA-base
+build route invalid.
 
-The Dockerfile builds from the upstream `2.14.1` source, uses the ARMv7 HA base,
-and explicitly rebuilds `@serialport/bindings-cpp` after deleting foreign
-prebuilds. This is important: it avoids silently taking an x86/arm64 binary.
-It needs Node 22+ from the selected HA base; CI must prove the actual version at
-build time before release.
+The replacement is a dedicated, minimal add-on wrapper over the official pinned
+`ghcr.io/koenkk/zigbee2mqtt:2.14.1` image. Zigbee2MQTT documents that its image
+supports `linux/arm/v7`. The wrapper maps `/data/options.json` into the same
+Zigbee2MQTT environment variables used by the official add-on and retains MQTT
+service discovery through the Supervisor API. Its Dockerfile verifies Node 22+
+while building; the upstream image carries the ARMv7-native serial binding.
 
 ## Upgrade risk: 2.6.3 → 2.14.1
 

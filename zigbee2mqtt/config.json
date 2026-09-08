@@ -1,6 +1,6 @@
 {
   "name": "Zigbee2MQTT (iHost ARMv7)",
-  "version": "2.14.1-ihost.1",
+  "version": "2.14.1-ihost.2",
   "slug": "ihost-zigbee2mqtt-armv7",
   "description": "Current Zigbee2MQTT for SONOFF iHost / Home Assistant OS ARMv7",
   "breaking_versions": ["2.0.0-1"],

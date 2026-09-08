@@ -5,8 +5,9 @@ running 32-bit ARMv7. It uses Zigbee2MQTT **2.14.1** and keeps the iHost add-on
 contract: the default data directory is `/config/zigbee2mqtt`, the UI exposes
 MQTT and serial settings, ingress is enabled, and UART/udev access is requested.
 
-It is not a fork of Zigbee2MQTT. The image downloads the signed upstream release
-tarball during its build and compiles its native serial binding for `linux/arm/v7`.
+It is not a fork of Zigbee2MQTT. The wrapper is based on the official pinned
+`ghcr.io/koenkk/zigbee2mqtt:2.14.1` image. Upstream publishes that image for
+`linux/arm/v7`, including its native serial binding.
 
 ## One required repository customization
 
@@ -14,7 +15,7 @@ The GHCR image is published under the GitHub owner `konrad-kulbat`. Create or
 use that GitHub repository, push this directory, and let the `main` workflow
 finish. It publishes:
 
-`ghcr.io/<owner>/ihost-zigbee2mqtt-armv7-armv7:2.14.1-ihost.1`
+`ghcr.io/<owner>/ihost-zigbee2mqtt-armv7-armv7:2.14.1-ihost.2`
 
 Make the resulting GHCR package public. Then add the GitHub repository URL in
 Home Assistant: **Settings → Add-ons → Add-on store → ⋮ → Repositories**.
@@ -64,10 +65,8 @@ On a Linux Docker host with Buildx and QEMU:
 
 ```sh
 docker buildx build --platform linux/arm/v7 \
-  --build-arg BUILD_FROM=ghcr.io/home-assistant/armv7-base:3.24 \
-  --build-arg BUILD_VERSION=2.14.1-ihost.1 \
-  --load -t ihost-z2m:2.14.1-ihost.1 zigbee2mqtt
-docker image inspect ihost-z2m:2.14.1-ihost.1
+  --load -t ihost-z2m:2.14.1-ihost.2 zigbee2mqtt
+docker image inspect ihost-z2m:2.14.1-ihost.2
 ```
 
 Emulation is a build/smoke-test aid only. A physical iHost runtime check remains
