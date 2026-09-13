@@ -60,8 +60,10 @@ if docker run --rm --platform linux/arm/v7 "$(readonly_mount "$WORK_DIR/no-data-
 pass 'negative options validation'
 docker network create "$NETWORK" >/dev/null; NETWORK_CREATED=1
 docker run -d --name "$MQTT" --network "$NETWORK" --network-alias mqtt-test eclipse-mosquitto:2 >/dev/null
-docker run -d --name "$MOCK" --network "$NETWORK" --network-alias mock-supervisor --user root --entrypoint node node:22-alpine -e 'const http=require("http");const body=JSON.stringify({data:{host:"mqtt-test",port:1883,ssl:false,username:"test-user",password:"test-password"}});http.createServer((req,res)=>{if(req.url!=="/services/mqtt"||req.headers.authorization!=="Bearer test-token"){res.writeHead(401);return res.end();}res.writeHead(200,{"content-type":"application/json"});res.end(body);}).listen(80,"0.0.0.0")' >/dev/null
+docker run -d --name "$MOCK" --network "$NETWORK" --network-alias mock-supervisor --user root --entrypoint node --health-cmd 'node -e "fetch(\"http://127.0.0.1/services/mqtt\", {headers:{Authorization:\"Bearer test-token\"}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"' --health-interval 1s --health-timeout 3s --health-retries 30 node:22-alpine -e 'const http=require("http");const body=JSON.stringify({data:{host:"mqtt-test",port:1883,ssl:false,username:"test-user",password:"test-password"}});http.createServer((req,res)=>{if(req.url!=="/services/mqtt"||req.headers.authorization!=="Bearer test-token"){res.writeHead(401);return res.end();}res.writeHead(200,{"content-type":"application/json"});res.end(body);}).listen(80,"0.0.0.0")' >/dev/null
 docker run --rm --network "$NETWORK" eclipse-mosquitto:2 sh -ec 'until nc -z mqtt-test 1883; do sleep 1; done'
+for _ in {1..30}; do [ "$(docker inspect -f '{{.State.Health.Status}}' "$MOCK")" = healthy ] && break; sleep 1; done
+[ "$(docker inspect -f '{{.State.Health.Status}}' "$MOCK")" = healthy ] || fail 'mock Supervisor healthcheck did not become healthy'
 SUPERVISOR_RESPONSE=''
 for _ in {1..30}; do
   if SUPERVISOR_RESPONSE="$(docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS -H 'Authorization: Bearer test-token' http://mock-supervisor/services/mqtt 2>/dev/null)"; then break; fi
