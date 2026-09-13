@@ -74,7 +74,7 @@ printf '%s' "$SUPERVISOR_RESPONSE" | node -e 'let data="";process.stdin.on("data
 if docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS http://mock-supervisor/services/mqtt >/dev/null 2>&1; then fail 'mock Supervisor accepted unauthenticated request'; fi
 pass 'MQTT TCP'; pass 'Supervisor API'
 docker run -d --name "$Z2M" --platform linux/arm/v7 --network "$NETWORK" -p 18099:8099 "$(readonly_mount "$WORK_DIR/options.json" /data/options.json)" "$(readwrite_mount "$DATA_DIR" /config/zigbee2mqtt)" "$IMAGE" >/dev/null
-wait_http; wait_health; docker exec --user root "$Z2M" sh -ec 'nslookup mqtt-test >/dev/null'
+wait_http; wait_health; docker exec --user root "$Z2M" node -e 'require("dns").lookup("mqtt-test", error => process.exit(error ? 1 : 0))'
 docker run -d --name "$ENV_PROBE" --platform linux/arm/v7 --network "$NETWORK" "$(readonly_mount "$WORK_DIR/options.json" /data/options.json)" "$(readonly_mount "$WORK_DIR/env-probe.js" /app/index.js)" "$(readonly_mount "$WORK_DIR/node" /usr/local/sbin/node)" "$(readwrite_mount "$DATA_DIR" /config/zigbee2mqtt)" "$IMAGE" >/dev/null
 for _ in {1..30}; do [ -s "$DATA_DIR/.ci-node-environ" ] && break; sleep 1; done
 expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_DATA /config/zigbee2mqtt; expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_CONFIG_FRONTEND_ENABLED true; expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_CONFIG_FRONTEND_PORT 8099; expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_CONFIG_HOMEASSISTANT_ENABLED true; expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_CONFIG_MQTT_BASE_TOPIC zigbee2mqtt; expect_probe_env "$DATA_DIR" ZIGBEE2MQTT_CONFIG_MQTT_SERVER mqtt://mqtt-test:1883
