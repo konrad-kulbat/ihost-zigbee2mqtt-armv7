@@ -56,7 +56,13 @@ docker network create "$NETWORK" >/dev/null; NETWORK_CREATED=1
 docker run -d --name "$MQTT" --network "$NETWORK" --network-alias mqtt-test eclipse-mosquitto:2 >/dev/null
 docker run -d --name "$MOCK" --network "$NETWORK" --network-alias mock-supervisor node:22-alpine node -e 'const http=require("http");const body=JSON.stringify({data:{host:"mqtt-test",port:1883,ssl:false,username:"test-user",password:"test-password"}});http.createServer((req,res)=>{if(req.url!=="/services/mqtt"||req.headers.authorization!=="Bearer test-token"){res.writeHead(401);return res.end();}res.writeHead(200,{"content-type":"application/json"});res.end(body);}).listen(80)' >/dev/null
 docker run --rm --network "$NETWORK" eclipse-mosquitto:2 sh -ec 'until nc -z mqtt-test 1883; do sleep 1; done'
-docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS -H 'Authorization: Bearer test-token' http://mock-supervisor/services/mqtt | node -e 'let data="";process.stdin.on("data",chunk=>data+=chunk);process.stdin.on("end",()=>{const mqtt=JSON.parse(data).data;if(mqtt.host!=="mqtt-test"||mqtt.port!==1883)process.exit(1);})'
+SUPERVISOR_RESPONSE=''
+for _ in {1..30}; do
+  if SUPERVISOR_RESPONSE="$(docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS -H 'Authorization: Bearer test-token' http://mock-supervisor/services/mqtt 2>/dev/null)"; then break; fi
+  sleep 1
+done
+[ -n "$SUPERVISOR_RESPONSE" ] || fail 'mock Supervisor did not become ready within 30 seconds'
+printf '%s' "$SUPERVISOR_RESPONSE" | node -e 'let data="";process.stdin.on("data",chunk=>data+=chunk);process.stdin.on("end",()=>{const mqtt=JSON.parse(data).data;if(mqtt.host!=="mqtt-test"||mqtt.port!==1883)process.exit(1);})'
 if docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS http://mock-supervisor/services/mqtt >/dev/null 2>&1; then fail 'mock Supervisor accepted unauthenticated request'; fi
 pass 'MQTT TCP'; pass 'Supervisor API'
 docker run -d --name "$Z2M" --platform linux/arm/v7 --network "$NETWORK" -p 18099:8099 "$(readonly_mount "$WORK_DIR/options.json" /data/options.json)" "$(readwrite_mount "$DATA_DIR" /config/zigbee2mqtt)" "$IMAGE" >/dev/null
